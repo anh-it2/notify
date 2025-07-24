@@ -1,26 +1,31 @@
 'use client'
 
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { app, db } from "./lib/firebase";
 import {getMessaging, getToken, onMessage} from 'firebase/messaging'
-import { saveNotification } from "./lib/saveNotification";
 import { fetNotification } from "./lib/fetchNotification";
-import { notifications } from "./api/saveNotification/route";
 import { collection, onSnapshot } from "firebase/firestore";
 
 export default function Home() {
 
   const [notify, setNotify] = useState([])
-  const [shouldFetch, setShouldFetch] = useState(false)
   const [show, setShow] = useState(false)
   const [lastDoc, setLastDoc] = useState(null)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
+  const [unReadCount, setUnReadCOunt] = useState(0)
 
     const fetchData = async () => { 
       setLoading(true)
-      const { data, lastDoc: newLastDoc } = await fetNotification(lastDoc)
+      const res = await fetch('/api/fetNotification',{
+        method: 'POST',
+        headers:{
+          'Content-Type':'application/json'
+        },
+        body: JSON.stringify(lastDoc)
+      })
+
+      const data = res.data
     
       if(data.length < 4){
         setHasMore(false)
@@ -85,7 +90,7 @@ export default function Home() {
 
   return (
     <div>
-    <button onClick={() => setShow(!show)}>click me to show notification</button>
+    <button onClick={() => setShow(!show)}>click me to show notification {unReadCount}</button>
     {show &&<div className="notifications" ref={scrollContainerRef}>
       {[...notify]
       .sort((a,b) => b.createdAt.toDate() - a.createdAt.toDate())
