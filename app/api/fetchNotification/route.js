@@ -1,5 +1,5 @@
 import { db } from "@/app/lib/firebase"
-import { collection, count, getCountFromServer, getDoc, getDocs, limit, orderBy, query, startAfter, Timestamp, where } from "firebase/firestore"
+import { collection, getCountFromServer, getDocs, limit, orderBy, query, startAfter, Timestamp, where } from "firebase/firestore"
 import { NextResponse } from "next/server"
 
 export async function POST(req) {

@@ -15,6 +15,7 @@ export default function Home() {
   const [unReadCount, setUnReadCOunt] = useState(0)
 
     const fetchData = async () => { 
+      
       setLoading(true)
       const res = await fetch(`${self.location.origin}/api/fetchNotification`,{
         method: 'POST',
@@ -32,7 +33,7 @@ export default function Home() {
       if(data.length < 4){
         setHasMore(false)
       } else{
-        setLastDoc(newLastDoc)
+        setLastDoc(data.lastDoc)
       }
       setNotify((prev) => [...prev,...data])
       setUnReadCOunt(data.unReadCount)
@@ -40,9 +41,15 @@ export default function Home() {
     }
 
   useEffect(() => {
+    let lastFetch = 0
     const unSubcribe = onSnapshot(collection(db,'notifications'),() => {
-      fetchData() 
-      setLastDoc(null)
+      const now = Date.now()
+
+      if(now - lastFetch > 100){
+        fetchData() 
+        setLastDoc(null)
+        lastFetch = now
+      }
     })
     return () => unSubcribe()
   },[])
@@ -54,7 +61,6 @@ export default function Home() {
       const {title, body} = payload.notification 
       const icon = payload.notification.icon ?? null
       const image = payload.notification.image ?? null
-      const data = {title, body, icon, image}
 
       await fetch(`${self.location.origin}/api/saveNotification`,{
         method:'POST',

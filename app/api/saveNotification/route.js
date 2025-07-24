@@ -1,4 +1,4 @@
-import { fetNotification } from "@/app/lib/fetchNotification"
+
 import { db } from "@/app/lib/firebase"
 import { addDoc, collection, Timestamp } from "firebase/firestore"
 import { NextResponse } from "next/server"
