@@ -1,14 +1,13 @@
 'use client'
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { app, db } from "./lib/firebase";
 import {getMessaging, getToken, onMessage} from 'firebase/messaging'
 import { saveNotification } from "./lib/saveNotification";
 import { fetNotification } from "./lib/fetchNotification";
 import { notifications } from "./api/saveNotification/route";
 import { collection, onSnapshot } from "firebase/firestore";
-
 
 export default function Home() {
 
@@ -17,50 +16,81 @@ export default function Home() {
   const [show, setShow] = useState(false)
   const [lastDoc, setLastDoc] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [hasMore, setHasMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+
+    const fetchData = async () => { 
+      setLoading(true)
+      const { data, lastDoc: newLastDoc } = await fetNotification(lastDoc)
+    
+      if(data.length < 4){
+        setHasMore(false)
+      } else{
+        setLastDoc(newLastDoc)
+      }
+      setNotify((prev) => [...prev,...data])
+      setLoading(false)
+    }
 
   useEffect(() => {
     const unSubcribe = onSnapshot(collection(db,'notifications'),() => {
-      setShouldFetch(true)
-      // setLastDoc(null)
+      fetchData() 
+      setLastDoc(null)
     })
     return () => unSubcribe()
   },[])
 
   useEffect(() =>{
-    if(!shouldFetch) return
-    const fetchData = async () => { 
-      // setLoading(true)
-      const data = await fetNotification()
-      setNotify(data)
-      setShouldFetch(false)
-      // setLoading(false)
-    }
-    fetchData()
-  },[shouldFetch])
-
-  useEffect(() =>{
     const messaging = getMessaging(app)
     generateToken(messaging)
-    onMessage(messaging,(payload) =>{
-      console.log(payload)
+    onMessage(messaging,async (payload) =>{
       const {title, body} = payload.notification 
       const icon = payload.notification.icon ?? null
       const image = payload.notification.image ?? null
       const data = {title, body, icon, image}
-      saveNotification(data)
-      setNotify((prev) => [...prev, data])
+
+      await fetch(`${self.location.origin}/api/saveNotification`,{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json'
+        },
+        body: JSON.stringify({
+          title: title,
+          body: body,
+          icon: icon,
+          image: image
+        })
+      })
     })
   },[])
+
+  const observer = useRef()
+  const scrollContainerRef = useRef()
+
+  const lastElement = useCallback(node => {
+    if(loading || !node) return
+    if(observer.current) observer.current.disconnect()
+    
+    observer.current = new IntersectionObserver(entries => {
+      if(entries[0].isIntersecting && hasMore){
+        fetchData()
+      }
+    },{
+      root: scrollContainerRef.current,
+      rootMargin: '0px',
+      threshold: 1.0
+    })
+
+    observer.current.observe(node)
+  })
 
   return (
     <div>
     <button onClick={() => setShow(!show)}>click me to show notification</button>
-    {show &&<div className="notifications">
+    {show &&<div className="notifications" ref={scrollContainerRef}>
       {[...notify]
       .sort((a,b) => b.createdAt.toDate() - a.createdAt.toDate())
       .map((message, index) => (
-        <div key={index}>
+        <div key={index} ref={index === notify.length - 1 ? lastElement : null}>
           <div>{message.title}</div>
           <div>{message.body}</div>
           {message.image? <img src={message.image} width={60} height={60} alt="icon" /> : <div>loading</div>}
@@ -82,3 +112,4 @@ async function generateToken(messaging) {
     console.log(token)
   }
 }
+

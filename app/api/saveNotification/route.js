@@ -1,6 +1,6 @@
 import { fetNotification } from "@/app/lib/fetchNotification"
 import { db } from "@/app/lib/firebase"
-import { addDoc, collection } from "firebase/firestore"
+import { addDoc, collection, Timestamp } from "firebase/firestore"
 import { NextResponse } from "next/server"
 
 export async function POST(request) {
@@ -8,11 +8,12 @@ export async function POST(request) {
         const data = await request.json()
         console.log(data.title)
         await addDoc(collection(db,'notifications'),{
-        title: data.title ,
-        body: data.body,
-        icon: data.icon ?? null,
-        image: data.image ?? null,
-        createdAt: new Date()
+                title: data.title,
+                body: data.body,
+                icon: data.icon,
+                image: data.image,
+                read: false,
+                createdAt: Timestamp.now()
     })
     return NextResponse.json('success')
     } catch (error) {

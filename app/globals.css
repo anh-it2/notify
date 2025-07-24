@@ -1,5 +1,5 @@
 .notifications{
-  height: 400px;
+  height: 100px;
   width: 300px;
   border: 2px solid red;
   overflow-y: scroll;
