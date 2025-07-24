@@ -1,17 +1,18 @@
 import { db } from "@/app/lib/firebase"
-import { collection, getDoc, limit, orderBy, query, startAfter } from "firebase/firestore"
+import { collection, count, getCountFromServer, getDoc, getDocs, limit, orderBy, query, startAfter, Timestamp, where } from "firebase/firestore"
 import { NextResponse } from "next/server"
 
 export async function POST(req) {
     const request = await req.json()
-    const {lastDoc} = request.lastDoc
+    const {lastDoc} = request
 
     let q
     if(lastDoc){
+        const lastTimestamp = Timestamp.fromMillis(lastDoc)
         q = query(
             collection(db,'notifications'),
             orderBy('createdAt','desc'),
-            startAfter(lastDoc),
+            startAfter(lastTimestamp),
             limit(4)
         )
     }else{
@@ -22,13 +23,28 @@ export async function POST(req) {
         )
     }
 
-    const querySnapshot = getDoc(q)
-    const doc = querySnapshot.docs.map((doc) => doc.data())
-    const newLastDoc = querySnapshot.docs.at(-1)
+    const querySnapshot = await getDocs(q)
+    const doc = querySnapshot.docs.map((doc) => {
+        const data = doc.data()
+        return {
+            ...data,
+            createdAt: data.createdAt.toMillis()
+        }
+    })
+    const newLastDoc = querySnapshot.docs.at(-1).data().createdAt
+
+    const countQuery = query(
+        collection(db,'notifications'),
+        where('read', '==', false)
+    )
+
+    const countSnap = await getCountFromServer(countQuery)
+    const   unReadCount = countSnap.data().count
 
     return NextResponse.json({
-        success: true,
-        data: doc,
-        lastDoc: newLastDoc
+        success:true,
+        data:doc,
+        lastDoc:newLastDoc,
+        unReadCount
     })
 }

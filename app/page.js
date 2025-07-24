@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { app, db } from "./lib/firebase";
 import {getMessaging, getToken, onMessage} from 'firebase/messaging'
-import { fetNotification } from "./lib/fetchNotification";
 import { collection, onSnapshot } from "firebase/firestore";
 
 export default function Home() {
@@ -17,15 +16,18 @@ export default function Home() {
 
     const fetchData = async () => { 
       setLoading(true)
-      const res = await fetch('/api/fetNotification',{
+      const res = await fetch(`${self.location.origin}/api/fetchNotification`,{
         method: 'POST',
         headers:{
           'Content-Type':'application/json'
         },
-        body: JSON.stringify(lastDoc)
+        body: JSON.stringify({lastDoc: lastDoc?.createdAt ?? null})
       })
 
-      const data = res.data
+      const json = await res.json()
+
+      const data = json.data
+      console.log(data)
     
       if(data.length < 4){
         setHasMore(false)
@@ -33,6 +35,7 @@ export default function Home() {
         setLastDoc(newLastDoc)
       }
       setNotify((prev) => [...prev,...data])
+      setUnReadCOunt(data.unReadCount)
       setLoading(false)
     }
 
@@ -93,7 +96,7 @@ export default function Home() {
     <button onClick={() => setShow(!show)}>click me to show notification {unReadCount}</button>
     {show &&<div className="notifications" ref={scrollContainerRef}>
       {[...notify]
-      .sort((a,b) => b.createdAt.toDate() - a.createdAt.toDate())
+      .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
       .map((message, index) => (
         <div key={index} ref={index === notify.length - 1 ? lastElement : null}>
           <div>{message.title}</div>
